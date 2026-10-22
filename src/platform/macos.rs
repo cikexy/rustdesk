@@ -732,6 +732,17 @@ pub fn get_active_user_home() -> Option<PathBuf> {
 }
 
 pub fn is_prelogin() -> bool {
+    // On modern macOS, /dev/console is always owned by root(0), so the uid check alone
+    // wrongly marks an active GUI session as prelogin, which empties the username on
+    // file-transfer sessions and triggers the remote "No active console user" error.
+    if let Ok(output) = std::process::Command::new("/usr/bin/who").output() {
+        if String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .any(|line| line.split_whitespace().nth(1) == Some("console"))
+        {
+            return false;
+        }
+    }
     get_active_userid() == "0"
 }
 
